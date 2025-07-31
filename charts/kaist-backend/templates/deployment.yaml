@@ -1,4 +1,3 @@
-# kaist-backend/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,16 +16,19 @@ spec:
     spec:
       nodeSelector:
         {{- toYaml .Values.nodeSelector | nindent 8 }}
+
       containers:
         - name: kaist-backend
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: {{ .Values.service.port }}
+
           args:
             {{- range .Values.args }}
             - {{ . | quote }}
             {{- end }}
+
           env:
             {{- range $key, $value := .Values.config }}
             {{- if ne $key "GOOGLE_APPLICATION_CREDENTIALS" }}
@@ -51,21 +53,27 @@ spec:
                   key: {{ $key }}
             {{- end }}
 
-          {{- if .Values.gcs.enabled }}
           volumeMounts:
+            {{- if .Values.gcs.enabled }}
             - name: gcs-key
               mountPath: {{ .Values.gcs.mountPath }}
               subPath: gcs-service-account.json
-          {{- end }}
+            {{- end }}
 
-      {{- if .Values.gcs.enabled }}
+            {{- if .Values.dataset.enabled }}
+            - name: dataset-volume
+              mountPath: {{ .Values.dataset.mountPath }}
+              readOnly: {{ .Values.dataset.readOnly }}
+            {{- end }}
+
       volumes:
+        {{- if .Values.gcs.enabled }}
         - name: gcs-key
           secret:
             secretName: {{ .Values.gcs.secretName }}
-      {{- end }}
+        {{- end }}
 
-      {{- if .Values.dataset.enabled }}
+        {{- if .Values.dataset.enabled }}
         - name: dataset-volume
           persistentVolumeClaim:
             claimName: {{ .Values.dataset.pvcName }}
